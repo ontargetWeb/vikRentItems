@@ -7,12 +7,10 @@
  * @license     GNU General Public License version 2 or later; see LICENSE
  * @link        https://e4j.com
  * OVERRIDE BY HUW TO ONLY ALLOW DATE SELECTION ON 1ST OF THE MONTH
- * See https://chatgpt.com/c/66dd8976-1c8c-800d-86a4-30926ad6b9aa
- * New jquery function restrictToFirstOfMonth to line 1192
- * Changed the function call for beforeShowDay: vriIsDayFullIn TO beforeShowDay: restrictToFirstOfMonth
+ * echo "Hello World!";
  */
-echo "Hello World!";
 
+echo "v2";
 
 
 
@@ -319,139 +317,130 @@ for ($jj = 1; $jj <= $numcalendars; $jj++) {
 	for ($i = 0, $n = $days_indexes[$newarr['wday']]; $i < $n; $i++, $d_count++) {
 		$cal .= "<td align=\"center\">&nbsp;</td>";
 	}
-	while ($newarr['mon'] == $mon) {
-		$day_end_ts = mktime(23, 59, 59, $newarr['mon'], $newarr['mday'], $newarr['year']);
-		$day_hours_booked = [];
+//Start huw modify the calendars datepickers.	
+while ($newarr['mon'] == $mon) {
+    $day_end_ts = mktime(23, 59, 59, $newarr['mon'], $newarr['mday'], $newarr['year']);
+    
+    // Default state: assume the day is free unless proven otherwise
+    $dclass = "vritdfree";  // Default free day class
+    $useday = '<span class="vri-idetails-cal-pickday" data-daydate="' . date($df, $newarr[0]) . '">' . $newarr['mday'] . '</span>';
+    
+    if ($newarr['mday'] != 1) {
+        // Non-1st days are not clickable, but keep the default style
+        $useday = '<span class="vri-avcal-spday">' . $newarr['mday'] . '</span>';
+    }
 
-		if ($d_count > 6) {
-			$d_count = 0;
-			$cal .= "</tr>\n<tr>";
-		}
+    $day_hours_booked = [];
+    if ($d_count > 6) {
+        $d_count = 0;
+        $cal .= "</tr>\n<tr>";
+    }
 
-		$dclass = "vritdfree";
-		$dalt = "";
-		$bid = "";
-		$totfound = 0;
-		$fulldaytotfound = 0;
+    // Default state for classes and variables
+    $totfound = 0;
+    $fulldaytotfound = 0;
+    $ischeckinday = false;
+    $ischeckoutday = false;
 
-		$ischeckinday = false;
-		$ischeckoutday = false;
-		foreach ($busy as $b) {
-			$tmpone = getdate($b['ritiro']);
-			$ritts = mktime(0, 0, 0, $tmpone['mon'], $tmpone['mday'], $tmpone['year']);
-			$tmptwo = getdate($b['consegna']);
-			$conts = mktime(0, 0, 0, $tmptwo['mon'], $tmptwo['mday'], $tmptwo['year']);
+    foreach ($busy as $b) {
+        $tmpone = getdate($b['ritiro']);
+        $ritts = mktime(0, 0, 0, $tmpone['mon'], $tmpone['mday'], $tmpone['year']);
+        $tmptwo = getdate($b['consegna']);
+        $conts = mktime(0, 0, 0, $tmptwo['mon'], $tmptwo['mday'], $tmptwo['year']);
 
-			/**
-			 * Check if this day is completely booked to disable dates in the datepicker.
-			 * New calculation method based on the exact hours booked.
-			 * 
-			 * @since 	1.7.3 (J) - 1.1.5 (WP)
-			 */
-			if ($b['ritiro'] <= $newarr[0] && $b['realback'] >= $day_end_ts) {
-				$fulldaytotfound++;
-				if (!empty($b['closure'])) {
-					$fulldaytotfound = $item['units'];
-				}
-			} else {
-				// check if booking is touching this day even for just a few hours
-				if ($b['ritiro'] >= $newarr[0] && $b['ritiro'] <= $day_end_ts) {
-					// count the hours of this day occupied by the pickup
-					for ($h = 0; $h < 24; $h++) {
-						$check_hour_ts = mktime($h, 0, 0, $newarr['mon'], $newarr['mday'], $newarr['year']);
-						if ($check_hour_ts > $b['realback']) {
-							break;
-						}
-						if ($check_hour_ts >= $b['ritiro'] && !in_array($h, $day_hours_booked)) {
-							$day_hours_booked[] = $h;
-						}
-					}
-				} elseif ($b['realback'] >= $newarr[0] && $b['realback'] <= $day_end_ts) {
-					// count the hours of this day occupied by the drop off
-					for ($h = 0; $h < 24; $h++) {
-						$check_hour_ts = mktime($h, 0, 0, $newarr['mon'], $newarr['mday'], $newarr['year']);
-						if ($check_hour_ts > $b['realback']) {
-							break;
-						}
-						if ($check_hour_ts <= $b['realback'] && !in_array($h, $day_hours_booked)) {
-							$day_hours_booked[] = $h;
-						}
-					}
-				}
-			}
+        // Check if this day is fully booked
+        if ($b['ritiro'] <= $newarr[0] && $b['realback'] >= $day_end_ts) {
+            $fulldaytotfound++;
+            if (!empty($b['closure'])) {
+                $fulldaytotfound = $item['units'];
+            }
+        } else {
+            // Handle partial bookings if applicable
+            if ($b['ritiro'] >= $newarr[0] && $b['ritiro'] <= $day_end_ts) {
+                for ($h = 0; $h < 24; $h++) {
+                    $check_hour_ts = mktime($h, 0, 0, $newarr['mon'], $newarr['mday'], $newarr['year']);
+                    if ($check_hour_ts > $b['realback']) {
+                        break;
+                    }
+                    if ($check_hour_ts >= $b['ritiro'] && !in_array($h, $day_hours_booked)) {
+                        $day_hours_booked[] = $h;
+                    }
+                }
+            } elseif ($b['realback'] >= $newarr[0] && $b['realback'] <= $day_end_ts) {
+                for ($h = 0; $h < 24; $h++) {
+                    $check_hour_ts = mktime($h, 0, 0, $newarr['mon'], $newarr['mday'], $newarr['year']);
+                    if ($check_hour_ts > $b['realback']) {
+                        break;
+                    }
+                    if ($check_hour_ts <= $b['realback'] && !in_array($h, $day_hours_booked)) {
+                        $day_hours_booked[] = $h;
+                    }
+                }
+            }
+        }
 
-			// check availability for this day
-			if ($newarr[0] >= $ritts && $newarr[0] <= $conts) {
-				$totfound++;
-				if ($newarr[0] == $ritts) {
-					$ischeckinday = true;
-				} elseif ($newarr[0] == $conts) {
-					$ischeckoutday = true;
-				}
-				//
-				if (!empty($b['closure'])) {
-					$totfound = $item['units'];
-					break;
-				}
-			}
-		}
+        // Check availability for this day
+        if ($newarr[0] >= $ritts && $newarr[0] <= $conts) {
+            $totfound++;
+            if ($newarr[0] == $ritts) {
+                $ischeckinday = true;
+            } elseif ($newarr[0] == $conts) {
+                $ischeckoutday = true;
+            }
+            if (!empty($b['closure'])) {
+                $totfound = $item['units'];
+                break;
+            }
+        }
+    }
 
-		if ($totfound >= $item['units']) {
-			// default class
-			$dclass = "vritdbusy";
+    // If the day is fully booked, mark it as busy (red)
+    if ($totfound >= $item['units']) {
+        $dclass = "vritdbusy";
 
-			// check for date disabled for pickup in datepicker
-			if ($fulldaytotfound >= $item['units'] || count($day_hours_booked) > 23) {
-				// no available hourly slots for this item on this day
-				$push_disabled_in[] = '"'.date('Y-m-d', $newarr[0]).'"';
-			}
+        if ($fulldaytotfound >= $item['units'] || count($day_hours_booked) > 23) {
+            $push_disabled_in[] = '"' . date('Y-m-d', $newarr[0]) . '"';
+        }
 
-			// check for date disabled for drop off in datepicker
-			if (!$ischeckinday && !$ischeckoutday) {
-				$push_disabled_out[] = '"'.date('Y-m-d', $newarr[0]).'"';
-			}
+        if (!$ischeckinday && !$ischeckoutday) {
+            $push_disabled_out[] = '"' . date('Y-m-d', $newarr[0]) . '"';
+        }
 
-			if ($ischeckinday && $previousdayclass != "vritdbusy") {
-				$dclass = "vritdbusy vritdbusyforcheckin";
-			}
-		} elseif ($totfound > 0) {
-			if ($showpartlyres) {
-				$dclass = "vritdwarning";
-			}
-		}
+        if ($ischeckinday && $previousdayclass != "vritdbusy") {
+            $dclass = "vritdbusy vritdbusyforcheckin";
+        }
+    } elseif ($totfound > 0) {
+        if ($showpartlyres) {
+            $dclass = "vritdwarning";
+        }
+    }
 
-		$previousdayclass = $dclass;
-		$useday = ($newarr['mday'] < 10 ? "0".$newarr['mday'] : $newarr['mday']);
+    $previousdayclass = $dclass;
 
-		//link for opening the hourly availability of the day
-		if ($newarr[0] >= $nowts && $newarr[0] >= $lim_mindays) {
-			if ($show_hourly_cal) {
-				$useday = '<a href="'.JRoute::_('index.php?option=com_vikrentitems&view=itemdetails&elemid='.$item['id'].'&dt='.$newarr[0].(!empty($pmonth) && $validmonth ? '&month='.$pmonth : '').(!empty($pitemid) ? '&Itemid='.$pitemid : '')).'">'.$useday.'</a>';
-			} else {
-				/**
-				 * With no hourly calendar it is useless to reload the page just to select a pick up date. We use JS instead.
-				 * 
-				 * @since 	1.7
-				 */
-				$useday = '<span class="vri-idetails-cal-pickday" data-daydate="' . date($df, $newarr[0]) . '">' . $useday . '</span>';
-			}
-		} else {
-			$useday = '<span class="vri-avcal-spday">'.$useday.'</span>';
-		}
+    // Render the calendar cell based on whether it's the 1st or not
+    if ($newarr[0] >= $nowts && $newarr[0] >= $lim_mindays && $newarr['mday'] == 1) {
+        // Only allow clickable links on the 1st of the month
+        if ($show_hourly_cal) {
+            $useday = '<a href="' . JRoute::_('index.php?option=com_vikrentitems&view=itemdetails&elemid=' . $item['id'] . '&dt=' . $newarr[0] . (!empty($pmonth) && $validmonth ? '&month=' . $pmonth : '') . (!empty($pitemid) ? '&Itemid=' . $pitemid : '')) . '" class="vri-day-available">' . $useday . '</a>';
+        } else {
+            $useday = '<span class="vri-idetails-cal-pickday" data-daydate="' . date($df, $newarr[0]) . '">' . $useday . '</span>';
+        }
+    } else {
+        // No clickable link for non-1st days, default style unless booked
+        $useday = '<span class="vri-avcal-spday">' . $newarr['mday'] . '</span>';
+    }
 
-		if ($totfound == 1) {
-			$cal .= "<td align=\"center\" data-fulldate=\"".date('Y-n-j', $newarr[0])."\" data-weekday=\"".$newarr['wday']."\" class=\"".$dclass."\">".$useday."</td>\n";
-		} elseif ($totfound > 1) {
-			$cal .= "<td align=\"center\" data-fulldate=\"".date('Y-n-j', $newarr[0])."\" data-weekday=\"".$newarr['wday']."\" class=\"".$dclass."\">".$useday."</td>\n";
-		} else {
-			$cal .= "<td align=\"center\" data-fulldate=\"".date('Y-n-j', $newarr[0])."\" data-weekday=\"".$newarr['wday']."\" class=\"".$dclass."\">".$useday."</td>\n";
-		}
+    // Render the table cell for the calendar
+    $cal .= "<td align=\"center\" data-fulldate=\"" . date('Y-n-j', $newarr[0]) . "\" data-weekday=\"" . $newarr['wday'] . "\" class=\"" . $dclass . "\">" . $useday . "</td>\n";
 
-		$next = $newarr['mday'] + 1;
-		$dayts = mktime(0, 0, 0, $newarr['mon'], $next, $newarr['year']);
-		$newarr = getdate($dayts);
-		$d_count++;
-	}
+    // Move to the next day
+    $next = $newarr['mday'] + 1;
+    $dayts = mktime(0, 0, 0, $newarr['mon'], $next, $newarr['year']);
+    $newarr = getdate($dayts);
+    $d_count++;
+}
+
+//end huw
 
 	for ($i = $d_count; $i <= 6; $i++) {
 		$cal .= "<td align=\"center\">&nbsp;</td>";
